@@ -54,3 +54,29 @@ docker service create --name proxy \
     -e MODE=swarm \
     vfarcic/docker-flow-proxy
 
+docker service create --name hello-bob \
+    --network proxy \
+    --network application \
+    -e HELLO_TO=Bob \
+    seankenny/hello-env
+
+docker service create --name hello-bill \
+    --network proxy \
+    --network application \
+    -e HELLO_TO=Bill \
+    seankenny/hello-env
+
+until curl -s -o /dev/null "http://$SWARM_MANAGER_IP:8080/v2/test"; do
+    echo "Waiting for proxy service"
+    sleep 5
+done
+
+curl "$(docker-machine ip manager1):8080/v1/docker-flow-proxy/reconfigure?serviceName=hello-bob&servicePath=/&serviceDomain=bob.docker.dev&port=8000"
+curl "$(docker-machine ip manager1):8080/v1/docker-flow-proxy/reconfigure?serviceName=hello-bill&servicePath=/&serviceDomain=bill.docker.dev&port=8000"
+
+echo
+echo "Add these lines to /etc/hosts"
+echo
+echo "           $SWARM_MANAGER_IP bob.docker.dev"
+echo "           $SWARM_MANAGER_IP bill.docker.dev"
+echo
