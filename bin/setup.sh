@@ -53,3 +53,4 @@ docker service create --name proxy \
     --network proxy \
     -e MODE=swarm \
     vfarcic/docker-flow-proxy
+
