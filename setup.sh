@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+set -e
+
+machine-env() {
+    eval $(docker-machine env $1)
+}
+
 # Create machines
 docker-machine create -d virtualbox manager1
 docker-machine create -d virtualbox worker1
@@ -27,5 +33,23 @@ echo
 echo
 
 # Join Swarm from worker nodes
-docker-machine ssh worker1 "docker swarm join --token $SWARM_WORKER_JOIN_TOKEN $SWARM_MANAGER_IP:2377"
-docker-machine ssh worker2 "docker swarm join --token $SWARM_WORKER_JOIN_TOKEN $SWARM_MANAGER_IP:2377"
+machine-env worker1
+docker swarm join --token $SWARM_WORKER_JOIN_TOKEN $SWARM_MANAGER_IP:2377
+
+machine-env worker2
+docker swarm join --token $SWARM_WORKER_JOIN_TOKEN $SWARM_MANAGER_IP:2377
+
+# Create networks
+machine-env manager1
+
+docker network create --driver overlay proxy
+docker network create --driver overlay application
+
+# Start proxy service
+docker service create --name proxy \
+    -p 80:80 \
+    -p 443:443 \
+    -p 8080:8080 \
+    --network proxy \
+    -e MODE=swarm \
+    vfarcic/docker-flow-proxy
